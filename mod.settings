@@ -1,0 +1,54 @@
+name        = "Shuffle Mk II"
+source_dir  = "source"
+output_dir  = "output"
+description = [=[[b]Changes how a commander's skill is judged when Shine shuffles the teams.[/b] Adds settings for each team separately, and a new blending rule that never rates a commander below their commander skill.
+
+This is an add-on for Shine's shuffle plugin, not a replacement. Shine keeps doing all the actual team balancing — this only changes one number it works from.
+
+[h1]The problem it solves[/h1]
+
+Shine can average a commander's commander skill with their field skill, to account for a commander who leaves the chair and fights. That option is useful, but it has two limits:
+
+[list]
+[*] It only works for aliens. Marine commanders leave the chair too, especially on smaller and more casual servers, but there was no way to enable it for them.
+[*] Averaging cuts both ways. A player who commands well but rarely leaves the chair gets rated [i]below[/i] their commander skill, because their weaker field skill drags the average down. That under-rates them and skews the shuffle.
+[/list]
+
+[h1]What you can set[/h1]
+
+Marines and aliens each get their own setting, with three choices:
+
+[list]
+[*] [b]COMMANDER_ONLY[/b] — use the commander skill as-is. This is how Shine behaves with blending switched off.
+[*] [b]AVERAGE[/b] — the midpoint of commander and field skill. This is Shine's existing blending, now available for marines too.
+[*] [b]AVERAGE_IF_FIELD_SKILL_HIGHER[/b] — the midpoint only when the field skill is the higher of the two, otherwise the commander skill as-is. Blends only in the direction that reflects time actually spent fighting, so a strong commander is never dragged down.
+[/list]
+
+[h1]Server admin[/h1]
+
+[list]
+[*] Requires Shine, with the shuffle (voterandom) plugin enabled. Shine will refuse to enable this mod without it.
+[*] Settings live in [b]config://shine/plugins/ShuffleMkII.json[/b], alongside your other Shine plugin configs.
+[*] Both settings default to [b]COMMANDER_ONLY[/b], so installing this without configuring it does not change how your server shuffles.
+[*] These settings only apply when Shine's balance mode is [b]HIVE[/b] and its [b]UseCommanderSkill[/b] option is on, since commander skill is not consulted otherwise.
+[*] While this mod is enabled, Shine's own [b]BlendAlienCommanderAndFieldSkills[/b] setting is ignored. Use the alien setting here instead.
+[/list]
+
+[h1]Transparency[/h1]
+
+[b]sh_teamstats[/b] reports which blending rule is in use whenever this mod is active, and says that shuffle results may differ from other servers.
+
+This is deliberate and should not be removed. Shine's built-in "another mod has altered the shuffle algorithm" warning only fires when the whole shuffling routine is replaced, which this mod does not do — so without that output, a server would report standard behaviour while shuffling differently. If you run this mod, shuffle results on your server are not Shine's stock results, and problems with them should come to this mod, not to Shine.
+
+[h1]Status[/h1]
+
+Experimental. Published to gather real evidence on live servers before proposing the behaviour for Shine itself.
+
+[h1]Credits[/h1]
+
+The commander skill calculation is adapted from [b]Shine[/b] by Person8880, whose shuffle plugin does all of the actual team balancing. Used with permission.
+
+Source: https://github.com/Bleuitup/Shuffle-Mk-II]=]
+image       = "preview.jpg"
+tag_modtype = "Gameplay Tweak"
+tag_support = "Must be run on Server"

@@ -76,6 +76,19 @@ where to send problem reports.
 **Please do not remove or suppress that output.** If you are running this mod, shuffle results on
 your server are not stock Shine's, and problems with them are not Person8880's to answer for.
 
+## Development
+
+The plug-in is a single file, `source/lua/shine/extensions/shufflemkii.lua`. `source/` is stripped
+at build time, so its runtime path is `lua/shine/extensions/shufflemkii.lua`.
+
+Logic tests run against the real plug-in file with a standalone Lua interpreter:
+
+```
+lua test/blend.lua
+```
+
+See `CLAUDE.md` for how the plug-in hooks into Shine and what must be kept in sync with upstream.
+
 ## Status
 
 Experimental and unreleased. Not yet verified in a live round — this plug-in exists specifically to
