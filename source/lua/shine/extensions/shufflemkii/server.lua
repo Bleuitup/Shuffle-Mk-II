@@ -1,5 +1,5 @@
 --[[
-	Shuffle Mk II
+	Shuffle Mk II server code.
 
 	An experimental replacement for Shine's commander skill handling in the shuffle (voterandom)
 	plugin, intended for testing on opted-in servers before proposing the behaviour upstream.
@@ -22,10 +22,7 @@ local TableConcat = table.concat
 
 local GetClientForPlayer = Shine.GetClientForPlayer
 
-local Plugin = Shine.Plugin( ... )
-
-Plugin.Version = "1.0"
-Plugin.PrintName = "Shuffle Mk II"
+local Plugin = ...
 
 Plugin.HasConfig = true
 Plugin.ConfigName = "ShuffleMkII.json"
@@ -223,5 +220,3 @@ function Plugin:Cleanup()
 
 	self.BaseClass.Cleanup( self )
 end
-
-return Plugin

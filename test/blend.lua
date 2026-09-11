@@ -43,10 +43,16 @@ Shine = {
 	end
 }
 
--- Load the real plugin, relative to this file so the cwd does not matter.
+-- Load the real plugin the way Shine does: shared.lua creates it, then server.lua receives it as
+-- its first argument. Paths are relative to this file so the cwd does not matter.
 local ScriptDir = debug.getinfo( 1, "S" ).source:match( "^@(.*[/\\])" ) or "./"
-local Chunk = assert( loadfile( ScriptDir.."../source/lua/shine/extensions/shufflemkii.lua" ) )
-local Plugin = Chunk( "shufflemkii" )
+local PluginDir = ScriptDir.."../source/lua/shine/extensions/shufflemkii/"
+
+local Plugin = assert( loadfile( PluginDir.."shared.lua" ) )( "shufflemkii" )
+assert( loadfile( PluginDir.."server.lua" ) )( Plugin, "shufflemkii" )
+
+assert( Plugin.DefaultState == false, "DefaultState must be false so Shine records the plugin as disabled" )
+assert( Plugin.PrintName and Plugin.Version, "shared.lua must provide PrintName and Version for sh_teamstats" )
 
 local Blend = Plugin.CommanderSkillBlendType
 

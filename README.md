@@ -62,7 +62,7 @@ enabled; use `AlienCommanderSkillBlend` instead.
 `sh_teamstats` reports the algorithm in use whenever this plug-in is active:
 
 ```
-Shuffle Mk II v1.0 is active and has replaced Shine's commander skill calculation.
+Shuffle Mk II v1.1 is active and has replaced Shine's commander skill calculation.
 Commander skill blending - Marines: AVERAGE_IF_FIELD_SKILL_HIGHER. Aliens: AVERAGE.
 Shuffle results may differ from other servers. Report shuffle issues to the Shuffle Mk II author, not to Shine.
 ```
@@ -78,8 +78,9 @@ your server are not stock Shine's, and problems with them are not Person8880's t
 
 ## Development
 
-The plug-in is a single file, `source/lua/shine/extensions/shufflemkii.lua`. `source/` is stripped
-at build time, so its runtime path is `lua/shine/extensions/shufflemkii.lua`.
+The plug-in lives in `source/lua/shine/extensions/shufflemkii/`: `shared.lua` declares it and
+`server.lua` holds all of the logic. `source/` is stripped at build time, so the runtime path is
+`lua/shine/extensions/shufflemkii/`.
 
 Logic tests run against the real plug-in file with a standalone Lua interpreter:
 
@@ -91,8 +92,10 @@ See `CLAUDE.md` for how the plug-in hooks into Shine and what must be kept in sy
 
 ## Status
 
-Experimental and unreleased. Not yet verified in a live round — this plug-in exists specifically to
-gather that evidence.
+Experimental. Published to the Steam Workshop as `3798409220`.
+
+v1.0 disconnected clients with `Invalid data` whenever the mod was mounted, even with the plug-in
+disabled. v1.1 changes the file layout to fix this, and has not yet been verified in a live round.
 
 ## Credits
 
