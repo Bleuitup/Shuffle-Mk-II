@@ -34,19 +34,7 @@ which is what Shine scans for extensions. **Do not** add `source/` to any path r
 There is no bootstrap/`.entry` file and none is needed: Shine discovers extensions by scanning
 `lua/shine/extensions/`.
 
-### Keep the shared.lua + server.lua layout
-
-v1.0 shipped as a **single file**, `lua/shine/extensions/shufflemkii.lua`. On NS2 Sudamerica 8v8
-(2026-09-10), mounting that build disconnected every client with `Invalid data` — the client logged
-"Different number of network messages on the Client from the Server" — even with the plugin
-**disabled**. Unmounting it fixed it. The server process never crashed and no Lua error was logged.
-
-The exact mechanism was **not** identified: the plugin registers no network messages, and Shine's
-own plugin sync treats a single-file plugin symmetrically. v1.1 moved to `shared.lua` + `server.lua`
-because that is exactly the layout of the author's other Shine plugins (`lifeformpicker`,
-`lockteamsv2`) running on that same server without problems — converging on a known-good shape
-rather than fixing a confirmed root cause. **Do not collapse it back into a single file** without
-re-testing on a live server with clients connected.
+### Layout
 
 `shared.lua` creates the plugin with `Shine.Plugin( ... )` and returns it; `server.lua` receives it
 as `local Plugin = ...` and returns nothing. `shared.lua` also sets `DefaultState = false` — without
@@ -55,6 +43,34 @@ change just to check.
 
 Keep `shared.lua` free of server-only concepts. It runs on clients too, so config, the validator
 and `DependsOnPlugins` stay in `server.lua`.
+
+v1.0 was a single file, `lua/shine/extensions/shufflemkii.lua`. v1.1 moved to this layout while
+chasing the client disconnects below, matching the author's other Shine plugins. **The layout was
+not the cause** — v1.1 failed identically — but it is kept because it is conventional and because
+`DefaultState` is a real improvement.
+
+## Client disconnects while not whitelisted (solved)
+
+Mounting this mod on NS2 Sudamerica 8v8 disconnected clients on map load with `Invalid data`
+("Different number of network messages on the Client from the Server"), even with the plugin
+disabled, in both v1.0 and v1.1. **The plugin's code is not involved.** Traced on 2026-09-11 from
+the server's and a client's logs:
+
+1. The mod is not yet on UWE's whitelist, so the server logs `Server has non whitelisted mods`,
+   disables ranking, and **skips its entry-file consistency hashing** — on a clean load it logs an
+   `EntryHash` line for every `lua/entry/*.entry`; with this mod mounted it logs none.
+2. Consistency checking is what normally stops players' own client-side mods loading. On a clean
+   connection the client logs, for example,
+   `Mod Devnull - Enhanced Hud failed consistency checking and will be disabled`. With checking
+   off, those mods mount (the failing connection mounted 31 mods against 28 on a clean one).
+3. `Devnull - Enhanced Hud` (Workshop `3765927260`) registers the network message
+   `BiomassNotificationLocation` from its FileHooks, which run on the client. The server does not
+   run that mod, so the client has one more network message than the server and is dropped.
+
+So **any** non-whitelisted mod mounted on that server will disconnect players who run a
+client-side mod that registers network messages. Players without such mods are unaffected. The
+fix is the UWE whitelisting, not a code change. To test before then, the affected player can turn
+the offending client mod off in their Mods menu.
 
 **`output/` is gitignored and must be built before publishing.** The build is
 `rm -rf output && mkdir -p output && cp -r source/. output/`, leaving `lua/` at the root of
@@ -110,7 +126,8 @@ check. A live round remains the real test.
 ## Status
 
 Published to the Workshop as `3798409220` (`publish_id` in `mod.settings`, written by Launch Pad).
-v1.0 broke client connections as described above; v1.1 has not yet been tested on a live server.
+Not yet whitelisted by UWE, which is what caused the client disconnects described above. The
+plugin itself has not yet run in a live round.
 
 When testing a build, check **both** states: mounted with the plugin disabled (where v1.0 failed)
 and enabled. A client must actually connect after the map loads — the failure only shows up at the

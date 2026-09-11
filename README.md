@@ -94,8 +94,10 @@ See `CLAUDE.md` for how the plug-in hooks into Shine and what must be kept in sy
 
 Experimental. Published to the Steam Workshop as `3798409220`.
 
-v1.0 disconnected clients with `Invalid data` whenever the mod was mounted, even with the plug-in
-disabled. v1.1 changes the file layout to fix this, and has not yet been verified in a live round.
+Until the mod is on UWE's whitelist, mounting it turns off the server's consistency checking. That
+lets players' own client-side mods load, and any that register network messages (for example
+Devnull - Enhanced Hud) will get those players disconnected with `Invalid data`. This affects any
+non-whitelisted mod, not this one in particular. See `CLAUDE.md` for the trace.
 
 ## Credits
 
