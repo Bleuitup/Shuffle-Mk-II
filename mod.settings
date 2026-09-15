@@ -1,6 +1,6 @@
 name        = "Shine - Shuffle Mk II"
-source_dir  = "source/"
-output_dir  = "output/"
+source_dir  = "source"
+output_dir  = "output"
 description = [=[]=]
 image       = "preview.jpg"
 tag_modtype = ""
