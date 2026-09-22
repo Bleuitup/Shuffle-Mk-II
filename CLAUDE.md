@@ -24,15 +24,20 @@ mod.settings                                        workshop metadata
 preview.jpg                                         workshop preview
 source/lua/shine/extensions/shufflemkii/shared.lua  declares the plugin (both realms)
 source/lua/shine/extensions/shufflemkii/server.lua  all of the logic
+source/lua/entry/ShuffleMkII.entry                  registers the file hook below
+source/lua/ShuffleMkII/FileHooks.lua                queues the consistency fallback (server only)
+source/lua/ShuffleMkII/ConsistencyFallback.lua      runs after the game's consistency setup
 test/blend.lua                                      standalone logic tests, not shipped
+test/consistency_fallback.lua                       standalone tests for the fallback, not shipped
 output/                                             Launch Pad build output, gitignored
 ```
 
 `source/` is stripped at build time, so the runtime path is `lua/shine/extensions/shufflemkii/` —
 which is what Shine scans for extensions. **Do not** add `source/` to any path referenced from Lua.
 
-There is no bootstrap/`.entry` file and none is needed: Shine discovers extensions by scanning
-`lua/shine/extensions/`.
+Shine discovers the plugin itself by scanning `lua/shine/extensions/`, with no bootstrap needed. The
+`.entry` file exists only for the consistency fallback below, which is not a Shine plugin and has to
+run before the game's own scripts.
 
 ### Layout
 
@@ -68,9 +73,30 @@ the server's and a client's logs:
    run that mod, so the client has one more network message than the server and is dropped.
 
 So **any** non-whitelisted mod mounted on that server will disconnect players who run a
-client-side mod that registers network messages. Players without such mods are unaffected. The
-fix is the UWE whitelisting, not a code change. To test before then, the affected player can turn
-the offending client mod off in their Mods menu.
+client-side mod that registers network messages. Players without such mods are unaffected.
+
+### The fallback (added 2026-09-22)
+
+The root cause is in the game, not in any mod: `core/lua/ConsistencyConfig.lua` asks for ranking and
+then returns whether or not the request succeeded, so when a non-whitelisted mod makes it fail, the
+code below that builds the consistency table never runs. Reported to UWE (see `UWE-Consistency-Report`
+in the workspace; the suggested fix is to return only when `ok` is true).
+
+`ConsistencyFallback.lua` finishes that job from the mod: a `post` file hook on
+`lua/ConsistencyConfig.lua` (UWE's own bootcamp and challenge mods hook the same file) that, when
+`Server.GetIsRankingActive()` is false, builds the table with the game's own default lists. This is
+the same end state as setting `"hiveranking": false` in `ServerConfig.json`, which the author didn't
+want to require of operators, but scoped so it only acts when ranking was unavailable anyway — it
+never costs ranking on a server that could have had it.
+
+It deliberately does nothing when ranking is active, when `consistency_enabled` is off, when
+`use_own_consistency_config` is set, or when `hiveranking` is already false: in every one of those
+cases the game has already done the right thing. It announces itself in the server log.
+
+**The pattern lists are copied verbatim from the game's defaults and must be kept in step with them.**
+They were verified identical to build 344 on 2026-09-22: 20 checked patterns, 1 restricted
+(`lua/entry/*.entry`, which is what blocks players' own mods), and 36 ignored — 36, not 35, because
+the game's own list contains `ui/alien_hud_health.dds` twice.
 
 **`output/` is gitignored and must be built before publishing.** The build is
 `rm -rf output && mkdir -p output && cp -r source/. output/`, leaving `lua/` at the root of
@@ -109,17 +135,22 @@ differently. Shine's source asks mods not to suppress that warning. Do not remov
 
 ```
 lua test/blend.lua
+lua test/consistency_fallback.lua
 ```
 
-Stubs the few Shine globals the plugin touches at load time, then `loadfile`s the real plugin file
+`consistency_fallback.lua` loads the real `ConsistencyFallback.lua` against a stubbed `Server`: 12
+assertions covering every case where it must stay out of the way, and the patterns, order and log
+lines when it does act.
+
+`blend.lua` stubs the few Shine globals the plugin touches at load time, then `loadfile`s the real plugin file
 and calls `Plugin:GetHiveSkill` directly — so it tests the shipped code, not a copy. 12 assertions
 covering all three modes, per-team isolation, and the fall-through paths.
 
 The `AVERAGE` case asserts 450 against the same fixture Shine's own unit test uses, which confirms
 the legacy behaviour is preserved.
 
-A standalone Lua interpreter is installed at `C:\Users\maost\AppData\Local\Programs\Lua\bin\`. Note
-it is **Lua 5.4 while NS2 runs LuaJIT/5.1**, and the harness does not exercise real player objects
+These run under a standalone Lua interpreter. Note it is **Lua 5.4 while NS2 runs LuaJIT/5.1**, and
+the harnesses do not exercise real player objects
 or Shine's loader — it verifies arithmetic and control flow only. Use `luac -p <file>` for a syntax
 check. A live round remains the real test.
 

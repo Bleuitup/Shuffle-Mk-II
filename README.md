@@ -94,10 +94,17 @@ See `CLAUDE.md` for how the plug-in hooks into Shine and what must be kept in sy
 
 Experimental. Published to the Steam Workshop as `3798409220`.
 
-Until the mod is on UWE's whitelist, mounting it turns off the server's consistency checking. That
-lets players' own client-side mods load, and any that register network messages (for example
-Devnull - Enhanced Hud) will get those players disconnected with `Invalid data`. This affects any
-non-whitelisted mod, not this one in particular. See `CLAUDE.md` for the trace.
+**This mod is not on UWE's whitelist, so a server running it cannot be ranked.**
+
+Because of a bug in the game, a server that can't be ranked also stops checking players' files
+altogether. Players' own client-side mods then load when they shouldn't, and any that register
+network messages (Devnull - Enhanced Hud, for example) get those players disconnected with
+`Invalid data`. This affects any non-whitelisted mod, not this one in particular.
+
+To avoid that, this mod restores the file checking the game skipped, using the game's own standard
+settings, and says so in the server log. It only does this when the server couldn't be ranked anyway,
+and it leaves your own consistency settings alone if you've set them. The bug itself has been
+reported to UWE. See `CLAUDE.md` for the detail.
 
 ## Credits
 
