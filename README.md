@@ -62,7 +62,7 @@ enabled; use `AlienCommanderSkillBlend` instead.
 `sh_teamstats` reports the algorithm in use whenever this plug-in is active:
 
 ```
-Shuffle Mk II v1.1 is active and has replaced Shine's commander skill calculation.
+Shuffle Mk II v1.11 is active and has replaced Shine's commander skill calculation.
 Commander skill blending - Marines: AVERAGE_IF_FIELD_SKILL_HIGHER. Aliens: AVERAGE.
 Shuffle results may differ from other servers. Report shuffle issues to the Shuffle Mk II author, not to Shine.
 ```
