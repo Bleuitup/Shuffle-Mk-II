@@ -100,6 +100,12 @@ local CommanderSkillBlendFields = {
 	"AlienCommanderSkillBlend"
 }
 
+-- Skill values for the log: rounded, or "-" when there is none.
+local function FormatSkill( Value )
+	if not Value then return "-" end
+	return StringFormat( "%.0f", Value )
+end
+
 function Plugin:Initialise()
 	self.Enabled = true
 	return true
@@ -181,6 +187,29 @@ function Plugin:GetCommanderSkillBreakdown( Ply, TeamNumber, TeamSkillEnabled )
 end
 
 --[[
+	Writes one row to Shine's log file only, never the console.
+
+	Shine:Print does both, which is why the summary lines appear in each. The per-player rows are
+	too noisy for a live console but are the whole point for later analysis, so they go through
+	LogString on its own. Rows are pipe-delimited to keep them easy to parse.
+
+	Shine buffers these and flushes on round end, map change and every five minutes, so a round's
+	rows are on disk by the time the round is over.
+]]
+function Plugin:LogShuffleDetail( Message, ... )
+	if not Shine.Config or not Shine.Config.EnableLogging then
+		-- Say so once: otherwise a server collects summaries for weeks and no rows at all.
+		if not self.WarnedAboutLogging and self.Logger then
+			self.WarnedAboutLogging = true
+			self.Logger:Warn( "Shine's EnableLogging is off, so the per-player shuffle rows cannot be written. Only the summary lines will be kept." )
+		end
+		return
+	end
+
+	Shine:LogString( StringFormat( "[%s] Shuffle detail - "..Message, self.PrintName, ... ) )
+end
+
+--[[
 	Logs what each shuffle produced: one line per team, plus one per commander where there is one.
 
 	Neither the scoreboard nor sh_teamstats can show this. The scoreboard has no per-player values,
@@ -203,6 +232,10 @@ function Plugin:LogShuffle()
 	local RankFunc = VoteShuffle:ApplyConfigToRankingFunction( VoteShuffle.SkillGetters.GetHiveSkill )
 	local TeamSkillEnabled = VoteShuffle:IsPerTeamSkillEnabled()
 
+	self:LogShuffleDetail( "modes: Marines %s, Aliens %s. Per-team skill: %s.",
+		self.Config.MarineCommanderSkillBlend, self.Config.AlienCommanderSkillBlend,
+		TeamSkillEnabled and "enabled" or "disabled" )
+
 	-- Team:GetPlayers() hands back the same table every call, so finish with one team before
 	-- asking for the next.
 	for TeamNumber = 1, 2 do
@@ -216,24 +249,40 @@ function Plugin:LogShuffle()
 			Logger:Info( "Shuffled teams - %s: average skill %.0f across %d player%s (%d counted).",
 				TeamName, Stats.Average, #Players, #Players == 1 and "" or "s", Stats.Count )
 
+			local CommanderName, CommanderBreakdown
+
 			for i = 1, #Players do
 				local Ply = Players[ i ]
-				local Breakdown = Ply and self:GetCommanderSkillBreakdown( Ply, TeamNumber, TeamSkillEnabled )
 
-				if Breakdown then
+				if Ply then
+					-- Name only, never Shine.GetClientInfo: that appends the Steam ID, and these
+					-- lines are collected for analysis and shared. NS2 names are not account names.
 					local Client = GetClientForPlayer( Ply )
-					-- Name only, never Shine.GetClientInfo: that appends the Steam ID, and these lines
-					-- are collected for analysis and shared. NS2 names are not account names.
 					local Name = ( Client and Shine.GetClientName( Client ) )
 						or ( Ply.GetName and Ply:GetName() ) or "<unknown>"
 
-					Logger:Info( "Shuffled teams - %s commander %s counted as %.0f (commander skill %.0f, field skill %s, blend %s).",
-						TeamName, Name, Breakdown.Counted, Breakdown.CommanderSkill,
-						Breakdown.FieldSkill and StringFormat( "%.0f", Breakdown.FieldSkill ) or "unavailable",
-						Breakdown.BlendType )
+					local Breakdown = self:GetCommanderSkillBreakdown( Ply, TeamNumber, TeamSkillEnabled )
 
-					break
+					-- Pipe-delimited, one row per player, for later analysis. File only.
+					self:LogShuffleDetail( "%s | %s | counted %s | field %s | commander %s | blend %s",
+						TeamName, Name,
+						FormatSkill( RankFunc( Ply, TeamNumber ) ),
+						FormatSkill( Breakdown and Breakdown.FieldSkill
+							or GetFieldPlayerSkill( Ply, TeamNumber, TeamSkillEnabled ) ),
+						FormatSkill( Breakdown and Breakdown.CommanderSkill ),
+						Breakdown and Breakdown.BlendType or "-" )
+
+					if Breakdown and not CommanderBreakdown then
+						CommanderName = Name
+						CommanderBreakdown = Breakdown
+					end
 				end
+			end
+
+			if CommanderBreakdown then
+				Logger:Info( "Shuffled teams - %s commander %s counted as %.0f (commander skill %.0f, field skill %s, blend %s).",
+					TeamName, CommanderName, CommanderBreakdown.Counted, CommanderBreakdown.CommanderSkill,
+					FormatSkill( CommanderBreakdown.FieldSkill ), CommanderBreakdown.BlendType )
 			end
 		end
 	end

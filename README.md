@@ -104,8 +104,12 @@ your server are not stock Shine's, and problems with them are not Person8880's t
 
 ## Shuffle log
 
-Every Hive shuffle writes what it decided to the server log: one line per team, and one more per
-team that had a commander. Four lines at most.
+Every Hive shuffle is logged in two levels of detail: a short summary for the console, and a full
+per-player breakdown in Shine's log file.
+
+### The console summary
+
+One line per team, and one more per team that had a commander. Four lines at most.
 
 ```
 [Shuffle Mk II] Shuffled teams - Marines: average skill 2325 across 2 players (2 counted).
@@ -114,17 +118,38 @@ team that had a commander. Four lines at most.
 [Shuffle Mk II] Shuffled teams - Aliens commander Godi counted as 2176 (commander skill 497, field skill 3855, blend AVERAGE_IF_FIELD_SKILL_HIGHER).
 ```
 
-This exists because the blended values are not visible anywhere else. The scoreboard shows no
-per-player figures, and `sh_teamstats` serves cached numbers that nothing refreshes when a player
-takes or leaves the command chair. These are computed at the moment of the shuffle, from the same
-ranking function the shuffle used, so they are what the algorithm actually decided on.
+### The full breakdown
+
+One row per player, written to `config://shine/logs/<date>.txt` and **not** to the console, so a
+busy server keeps a readable console while the data is still collected. Rows are pipe-delimited for
+later analysis and carry the same `[Shuffle Mk II]` prefix, so `grep` separates them cleanly.
+
+```
+[Shuffle Mk II] Shuffle detail - modes: Marines AVERAGE_IF_FIELD_SKILL_HIGHER, Aliens AVERAGE_IF_FIELD_SKILL_HIGHER. Per-team skill: disabled.
+[Shuffle Mk II] Shuffle detail - Marines | Someone | counted 2650 | field 3700 | commander 1600 | blend AVERAGE_IF_FIELD_SKILL_HIGHER
+[Shuffle Mk II] Shuffle detail - Marines | SomeoneElse | counted 2000 | field 2000 | commander - | blend -
+[Shuffle Mk II] Shuffle detail - Aliens | Godi | counted 2176 | field 3855 | commander 497 | blend AVERAGE_IF_FIELD_SKILL_HIGHER
+[Shuffle Mk II] Shuffle detail - Aliens | Another | counted 1500 | field 1500 | commander - | blend -
+```
+
+`counted` is the value the shuffle actually used for that player. `commander` and `blend` show as
+`-` for anyone who was not in the chair at the time.
+
+The log file also receives a copy of the console summary, since Shine writes console output to it
+as well. Lines appear in the order above.
+
+**Player names are logged without Steam IDs**, so the log can be shared for analysis without
+exposing accounts.
+
+**The rows need Shine's own `EnableLogging`**, which is on by default. With it off you keep the
+console summary and lose the rows; the plug-in says so once rather than failing quietly.
+
+Shine buffers its log and flushes on round end, map change and every five minutes, so a round's
+rows are on disk by the time the round is over. `sh_flushlog` forces it.
 
 Only Hive shuffles are logged, since commander skill is not consulted in the other balance modes.
-A team with no commander gets one line rather than two — commonly the case, since blending applies
-only to a player sitting in the chair at the moment the shuffle runs.
-
-Player names are logged without Steam IDs, so the log can be shared for analysis without
-exposing accounts.
+A team with no commander gets no commander line — commonly the case, since blending applies only to
+a player sitting in the chair at the moment the shuffle runs.
 
 Set the level to quieten it:
 

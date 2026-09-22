@@ -29,8 +29,13 @@ Shared = { Message = function() end }
 
 local MockClient = { GetIsVirtual = function() return false end }
 
+-- Rows written to Shine's log file only, never the console.
+local LoggedToFile = {}
+
 Shine = {
 	Plugin = function() return { BaseClass = { Cleanup = function() end } } end,
+	Config = { EnableLogging = true },
+	LogString = function( self, Text ) LoggedToFile[ #LoggedToFile + 1 ] = Text end,
 	GetClientForPlayer = function() return MockClient end,
 	GetClientName = function() return "Bleuitup" end,
 	GetTeamName = function( self, TeamNumber ) return TeamNumber == 1 and "Marines" or "Aliens" end,
@@ -66,12 +71,15 @@ local function Check( Name, Expected, Actual )
 	end
 end
 
-local Logged = {}
+local Logged, Warned = {}, {}
 local function MakeLogger( InfoEnabled )
 	return {
 		IsInfoEnabled = function() return InfoEnabled end,
 		Info = function( self, Message, ... )
 			Logged[ #Logged + 1 ] = select( "#", ... ) > 0 and string.format( Message, ... ) or Message
+		end,
+		Warn = function( self, Message, ... )
+			Warned[ #Warned + 1 ] = select( "#", ... ) > 0 and string.format( Message, ... ) or Message
 		end
 	}
 end
@@ -151,7 +159,9 @@ local function SetUp( MarineBlend, TeamSkillEnabled )
 
 	local VoteShuffle = MakeVoteShuffle( TeamSkillEnabled )
 	Shine.Plugins.voterandom = VoteShuffle
-	Logged = {}
+	Logged, Warned, LoggedToFile = {}, {}, {}
+	Shine.Config.EnableLogging = true
+	Plugin.WarnedAboutLogging = nil
 	return VoteShuffle
 end
 
@@ -239,6 +249,56 @@ SetUp( Blend.AVERAGE, false )
 Plugin.Logger = nil
 Plugin:LogShuffle()
 Check( "no logger at all does not error", 0, #Logged )
+
+-- Console summary vs full log file ------------------------------------------
+-- The console stays brief; the per-player rows go to Shine's log file only, via LogString.
+print( "" )
+print( "Brief console, full log file:" )
+SetUp( Blend.AVERAGE_IF_FIELD_SKILL_HIGHER, false )
+Plugin:LogShuffle()
+
+local function FileSays( Index, Phrase )
+	return LoggedToFile[ Index ] ~= nil and LoggedToFile[ Index ]:find( Phrase, 1, true ) ~= nil
+end
+
+local function FileHas( Phrase )
+	for i = 1, #LoggedToFile do
+		if LoggedToFile[ i ]:find( Phrase, 1, true ) then return true end
+	end
+	return false
+end
+
+Check( "console still gets only the three summary lines", 3, #Logged )
+Check( "file gets a header plus a row for all four players", 5, #LoggedToFile )
+Check( "header names both blend modes", true,
+	FileSays( 1, "modes: Marines AVERAGE_IF_FIELD_SKILL_HIGHER, Aliens COMMANDER_ONLY" ) )
+Check( "header records whether per-team skill was on", true, FileSays( 1, "Per-team skill: disabled" ) )
+
+Check( "commander row carries commander skill and blend", true,
+	FileHas( "counted 2650 | field 3700 | commander 1600 | blend AVERAGE_IF_FIELD_SKILL_HIGHER" ) )
+Check( "ordinary player row carries the field skill, with no commander values", true,
+	FileHas( "counted 2000 | field 2000 | commander - | blend -" ) )
+Check( "rows name the team", true, FileHas( "Aliens | Bleuitup | counted 2500" ) )
+Check( "rows are prefixed so they can be grepped out", true, FileSays( 2, "[Shuffle Mk II] Shuffle detail - " ) )
+
+local ConsoleHasRows = false
+for i = 1, #Logged do
+	if Logged[ i ]:find( "Shuffle detail", 1, true ) then ConsoleHasRows = true end
+end
+Check( "rows never reach the console", false, ConsoleHasRows )
+
+-- Shine's own logging switched off -------------------------------------------
+print( "" )
+print( "With Shine's EnableLogging off:" )
+SetUp( Blend.AVERAGE, false )
+Shine.Config.EnableLogging = false
+Plugin:LogShuffle()
+Check( "no rows are written", 0, #LoggedToFile )
+Check( "the summary is still logged", 3, #Logged )
+Check( "and it says so, once", 1, #Warned )
+
+Plugin:LogShuffle()
+Check( "not repeated on the next shuffle", 1, #Warned )
 
 print( string.format( "\n%d passed, %d failed\n", Passed, Failed ) )
 os.exit( Failed == 0 and 0 or 1 )

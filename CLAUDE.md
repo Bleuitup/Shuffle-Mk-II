@@ -164,6 +164,17 @@ Skill values come from `VoteShuffle:ApplyConfigToRankingFunction( VoteShuffle.Sk
 and `VoteShuffle:GetAverageSkill`, both public methods, so the log reports exactly what the shuffle
 used. `GetAverageSkill` is uncached, unlike `GetTeamStats`, so the numbers cannot be stale.
 
+### Console summary, log file detail
+
+`Shine:Print` writes to **both** the console and Shine's log file, which is why `Logger:Info`
+output appears in each. `Shine:LogString` writes to the log file alone. `LogShuffleDetail` uses
+the latter, so the per-player rows never reach a live console while still being collected.
+
+Rows are pipe-delimited and prefixed, so they can be parsed or grepped apart from the summary.
+They depend on Shine's own `EnableLogging`; when it is off the plugin warns once rather than
+silently collecting nothing. Shine buffers and flushes on round end, map change and every five
+minutes.
+
 **Log names with `Shine.GetClientName`, never `Shine.GetClientInfo`** — the latter appends the
 Steam ID, and these lines are collected and shared for analysis. NS2 names are not account names.
 
@@ -186,8 +197,9 @@ lua test/consistency_fallback.lua
 lua test/shuffle_log.lua
 ```
 
-`shuffle_log.lua` drives `LogShuffle` and the `ShuffleTeams` wrapper against stubbed teams: 23
-assertions covering the line count, the blended numbers, skill offsets, both commanders, the
+`shuffle_log.lua` drives `LogShuffle` and the `ShuffleTeams` wrapper against stubbed teams: 36
+assertions covering the summary line count, the blended numbers, skill offsets, both commanders,
+the per-player rows going to the log file and never the console, the `EnableLogging` warning, the
 wrapper restoring cleanly, and the log level.
 
 `consistency_fallback.lua` loads the real `ConsistencyFallback.lua` against a stubbed `Server`: 12
