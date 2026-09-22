@@ -124,14 +124,24 @@ plugin. `Plugin:Cleanup` restores both, so the plugin can be unloaded cleanly.
 **If upstream changes how skill offsets are applied, these must be updated to match** or this
 plugin will silently disagree with Shine about what a player's field skill is.
 
-### Commander skill is the shuffle plugin's call, not this one's
+### It forces the shuffle plugin's commander skill on
 
-`CommanderSkillEnabled` is passed in by voterandom from `BalanceModeConfig.HIVE.UseCommanderSkill`,
-via `BalanceModule:ApplyConfigToRankingFunction`. This plugin has no setting of its own for it and
-must not grow one — it would then disagree with the shuffle plugin about which players get ranked
-how. With it off, `GetHiveSkill` never enters the commander branch and returns exactly what upstream
-would, so the plugin is inert. `PrintAlgorithm` checks the same flag and says so, because every
-blend mode is a function of the commander skill.
+Every blend mode is a function of the commander skill, so with voterandom's
+`BalanceModeConfig.HIVE.UseCommanderSkill` off, `GetHiveSkill` never enters the commander branch
+and this plugin is inert. `OnFirstThink` therefore forces it on and `Cleanup` restores it.
+
+**Override `IsCommanderSkillEnabled`, never the config value.** Shine writes a plugin's config
+back to disk whenever validation changes something ([base_plugin/config.lua] line 193), so writing
+into voterandom's config table risks persisting the change and outliving this plugin — an operator
+would be left with a setting they never chose. `IsCommanderSkillEnabled` is the only reader of the
+setting in all of Shine, so overriding the method covers every consumer: ranking, the vote menu's
+standard deviation display and happiness optimisation.
+
+This overrides an operator's stated choice, so `PrintAlgorithm` says so, and says whether it is
+actually overriding anything or the setting was already on. **Known sharp edge:** enabling this
+with both blends left at the `COMMANDER_ONLY` default gives an operator who deliberately disabled
+commander skill the exact behaviour they disabled it to avoid. The README warns about this; do not
+quietly change the defaults to paper over it without asking the author.
 
 ### The sh_teamstats output is deliberate
 
@@ -152,8 +162,9 @@ assertions covering every case where it must stay out of the way, and the patter
 lines when it does act.
 
 `blend.lua` stubs the few Shine globals the plugin touches at load time, then `loadfile`s the real plugin file
-and calls `Plugin:GetHiveSkill` directly — so it tests the shipped code, not a copy. 19 assertions
-covering all three modes, per-team isolation, the fall-through paths, and what `sh_teamstats` reports.
+and calls `Plugin:GetHiveSkill` directly — so it tests the shipped code, not a copy. 22 assertions
+covering all three modes, per-team isolation, the fall-through paths, forcing commander skill on and
+restoring it, and what `sh_teamstats` reports.
 
 The `AVERAGE` case asserts 450 against the same fixture Shine's own unit test uses, which confirms
 the legacy behaviour is preserved.

@@ -141,18 +141,34 @@ Check( "commander skill disabled uses field skill",
 Check( "commander evaluated against the opposite team uses field skill",
 	1500, Skill( AlienComm, 1, Blend.AVERAGE, Blend.AVERAGE ) )
 
--- sh_teamstats reporting ----------------------------------------------------
--- Every blend mode is a function of the commander skill, so with the shuffle plugin's
--- UseCommanderSkill off this plugin changes nothing, and must not claim otherwise.
-local function Report( CommanderSkillEnabled )
-	Shine.Plugins.voterandom = CommanderSkillEnabled ~= nil and {
-		IsCommanderSkillEnabled = function() return CommanderSkillEnabled end
-	} or nil
+-- Forcing commander skill on, and sh_teamstats -------------------------------
+-- Every blend mode is a function of the commander skill, so the plugin forces the shuffle plugin to
+-- consult it. That overrides the operator's setting, so it has to be stated in sh_teamstats.
+local VoteShuffleStub
 
+-- Stands in for Shine's voterandom, with only the parts OnFirstThink touches.
+local function MakeVoteShuffle( UseCommanderSkill )
+	return {
+		SkillGetters = { GetHiveSkill = function() return "upstream" end },
+		Config = { BalanceMode = "HIVE" },
+		ShuffleMode = { HIVE = "HIVE" },
+		IsCommanderSkillEnabled = function() return UseCommanderSkill end
+	}
+end
+
+-- Runs the real OnFirstThink against that stub and returns the first reported line.
+local function Report( UseCommanderSkill )
+	VoteShuffleStub = MakeVoteShuffle( UseCommanderSkill )
+	Shine.Plugins.voterandom = VoteShuffleStub
+	Shine.Commands = {}
+
+	Plugin.OriginalIsCommanderSkillEnabled = nil
 	Plugin.Config = {
 		MarineCommanderSkillBlend = Blend.AVERAGE,
 		AlienCommanderSkillBlend = Blend.AVERAGE_IF_FIELD_SKILL_HIGHER
 	}
+
+	Plugin:OnFirstThink()
 
 	NotifiedLines = {}
 	Plugin:PrintAlgorithm()
@@ -164,27 +180,36 @@ local function Says( Text, Phrase )
 end
 
 print( "" )
+print( "Forcing commander skill on:" )
+
+local WasOff = Report( false )
+Check( "shuffle plugin reports commander skill as enabled afterwards", true,
+	VoteShuffleStub:IsCommanderSkillEnabled() )
+Check( "the original is kept so it can be restored", true,
+	Plugin.OriginalIsCommanderSkillEnabled ~= nil )
+
+Plugin:Cleanup()
+Check( "Cleanup puts the shuffle plugin's own setting back", false,
+	VoteShuffleStub:IsCommanderSkillEnabled() )
+Check( "Cleanup restores the ranking function too", "upstream",
+	VoteShuffleStub.SkillGetters.GetHiveSkill() )
+
+print( "" )
 print( "sh_teamstats reporting:" )
+Check( "says commander skill is forced on", true, Says( WasOff, "forced on by this plug-in" ) )
+Check( "says the operator's setting is being overridden", true,
+	Says( WasOff, "overriding the shuffle plug-in's UseCommanderSkill setting of false" ) )
 
-local Enabled = Report( true )
-Check( "commander skill on: says it replaced the calculation", true,
-	Says( Enabled, "has replaced Shine's commander skill calculation" ) )
-Check( "commander skill on: names both blend modes", true,
-	Says( Enabled, "Marines: AVERAGE." ) and Says( Enabled, "Aliens: AVERAGE_IF_FIELD_SKILL_HIGHER." ) )
-Check( "commander skill on: warns results may differ", true,
-	Says( Enabled, "may differ from other servers" ) )
-
-local Disabled = Report( false )
-Check( "commander skill off: does not claim to have replaced anything", false,
-	Says( Disabled, "has replaced" ) )
-Check( "commander skill off: says why the settings do nothing", true,
-	Says( Disabled, "UseCommanderSkill disabled" ) and Says( Disabled, "do nothing" ) )
-Check( "commander skill off: says results match stock Shine", true,
-	Says( Disabled, "match stock Shine" ) )
-
--- If the shuffle plugin cannot be inspected, report blending rather than claim stock behaviour.
-Check( "shuffle plugin missing: falls back to the full report", true,
-	Says( Report( nil ), "has replaced Shine's commander skill calculation" ) )
+local WasOn = Report( true )
+Check( "still says forced on when the setting was already enabled", true,
+	Says( WasOn, "forced on by this plug-in" ) )
+Check( "does not claim to override a setting that was already on", false,
+	Says( WasOn, "overriding" ) )
+Check( "names both blend modes", true,
+	Says( WasOn, "Marines: AVERAGE." ) and Says( WasOn, "Aliens: AVERAGE_IF_FIELD_SKILL_HIGHER." ) )
+Check( "warns results may differ from other servers", true,
+	Says( WasOn, "may differ from other servers" ) )
+Plugin:Cleanup()
 
 print( string.format( "\n%d passed, %d failed\n", Passed, Failed ) )
 os.exit( Failed == 0 and 0 or 1 )

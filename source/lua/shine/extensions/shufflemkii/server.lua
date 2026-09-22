@@ -149,50 +149,42 @@ end
 	Reports which algorithm is actually in use, so server operators and players can tell that
 	shuffle results will not match a stock Shine server, and who to report problems to.
 
-	Every blending mode is a function of the commander skill, so when the shuffle plugin has
-	commander skill switched off there is nothing to blend and this plugin changes nothing. Say so,
-	rather than reporting blending that is not happening.
+	Every blending mode is a function of the commander skill, so this plugin forces the shuffle
+	plugin to consult it. That is a change to another plugin's configured behaviour and is stated
+	here, not left for someone to discover.
 ]]
-function Plugin:PrintAlgorithm( Client )
+function Plugin:GetCommanderSkillLine()
 	local VoteShuffle = Shine.Plugins.voterandom
-	local CommanderSkillEnabled = true
-	if VoteShuffle and VoteShuffle.IsCommanderSkillEnabled then
-		CommanderSkillEnabled = not not VoteShuffle:IsCommanderSkillEnabled()
+	local WasEnabled = true
+	if VoteShuffle and self.OriginalIsCommanderSkillEnabled then
+		WasEnabled = not not self.OriginalIsCommanderSkillEnabled( VoteShuffle )
 	end
 
-	local Lines
-	if CommanderSkillEnabled then
-		Lines = {
-			StringFormat(
-				"%s v%s is active and has replaced Shine's commander skill calculation.",
-				self.PrintName,
-				self.Version
-			),
-			StringFormat(
-				"Commander skill blending - Marines: %s. Aliens: %s.",
-				self.Config.MarineCommanderSkillBlend,
-				self.Config.AlienCommanderSkillBlend
-			),
-			StringFormat(
-				"Shuffle results may differ from other servers. Report shuffle issues to the %s author, not to Shine.",
-				self.PrintName
-			)
-		}
-	else
-		Lines = {
-			StringFormat(
-				"%s v%s is loaded, but the shuffle plugin has UseCommanderSkill disabled.",
-				self.PrintName,
-				self.Version
-			),
-			StringFormat(
-				"Commanders are rated on field skill alone, so the blending settings (Marines: %s. Aliens: %s.) do nothing.",
-				self.Config.MarineCommanderSkillBlend,
-				self.Config.AlienCommanderSkillBlend
-			),
-			"Shuffle results match stock Shine while that is the case."
-		}
+	if WasEnabled then
+		return "Commander skill is forced on by this plug-in. The shuffle plug-in already had UseCommanderSkill enabled."
 	end
+
+	return "Commander skill is forced on by this plug-in, overriding the shuffle plug-in's UseCommanderSkill setting of false."
+end
+
+function Plugin:PrintAlgorithm( Client )
+	local Lines = {
+		StringFormat(
+			"%s v%s is active and has replaced Shine's commander skill calculation.",
+			self.PrintName,
+			self.Version
+		),
+		self:GetCommanderSkillLine(),
+		StringFormat(
+			"Commander skill blending - Marines: %s. Aliens: %s.",
+			self.Config.MarineCommanderSkillBlend,
+			self.Config.AlienCommanderSkillBlend
+		),
+		StringFormat(
+			"Shuffle results may differ from other servers. Report shuffle issues to the %s author, not to Shine.",
+			self.PrintName
+		)
+	}
 
 	if not Client then
 		Notify( TableConcat( Lines, "\n" ) )
@@ -212,6 +204,18 @@ function Plugin:OnFirstThink()
 	self.OriginalGetHiveSkill = VoteShuffle.SkillGetters.GetHiveSkill
 	VoteShuffle.SkillGetters.GetHiveSkill = function( Ply, TeamNumber, TeamSkillEnabled, CommanderSkillEnabled )
 		return self:GetHiveSkill( Ply, TeamNumber, TeamSkillEnabled, CommanderSkillEnabled )
+	end
+
+	-- Every blending mode is a function of the commander skill, so with the shuffle plugin's
+	-- UseCommanderSkill off this plugin would sit there doing nothing. Force it on instead.
+	--
+	-- Override the method rather than the config value: Shine writes a plugin's config back to
+	-- disk whenever validation changes something, so writing to voterandom's config could persist
+	-- this change and outlive the plugin. IsCommanderSkillEnabled is the only reader of the
+	-- setting, so overriding it covers every consumer of it.
+	if VoteShuffle.IsCommanderSkillEnabled then
+		self.OriginalIsCommanderSkillEnabled = VoteShuffle.IsCommanderSkillEnabled
+		VoteShuffle.IsCommanderSkillEnabled = function() return true end
 	end
 
 	local Command = Shine.Commands[ "sh_teamstats" ]
@@ -237,6 +241,10 @@ function Plugin:Cleanup()
 	if VoteShuffle and self.OriginalGetHiveSkill then
 		VoteShuffle.SkillGetters.GetHiveSkill = self.OriginalGetHiveSkill
 	end
+	if VoteShuffle and self.OriginalIsCommanderSkillEnabled then
+		VoteShuffle.IsCommanderSkillEnabled = self.OriginalIsCommanderSkillEnabled
+	end
+	self.OriginalIsCommanderSkillEnabled = nil
 	self.OriginalGetHiveSkill = nil
 
 	if self.TeamStatsCommand and self.OriginalTeamStatsFunc then

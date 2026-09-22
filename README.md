@@ -44,8 +44,8 @@ configs.
 
 ```json
 {
-	// Both settings do nothing unless the shuffle plug-in's BalanceMode is HIVE and its
-	// UseCommanderSkill option is on, because every mode below is a function of commander skill.
+	// COMMANDER_ONLY, AVERAGE, or AVERAGE_IF_FIELD_SKILL_HIGHER. Both default to COMMANDER_ONLY,
+	// which is how Shine rates a commander when blending is off.
 	"MarineCommanderSkillBlend": "COMMANDER_ONLY",
 	"AlienCommanderSkillBlend": "COMMANDER_ONLY"
 
@@ -60,14 +60,24 @@ Shine's config reader accepts `//` and `/* */` comments, so you can annotate the
 rewrites it when it has to add a missing setting or correct an invalid one — a rewrite drops your
 comments, so keep a copy if you care about them.
 
-Both settings default to `COMMANDER_ONLY`, so installing the mod without configuring it does not
-change how your server shuffles.
+Both settings default to `COMMANDER_ONLY`, so installing the mod and leaving it alone rates
+commanders exactly as Shine does with blending switched off.
 
-These settings only apply when the shuffle plug-in's `BalanceMode` is `HIVE` and its
-`UseCommanderSkill` option is enabled — commander skill is not consulted otherwise, and with it off
-this plug-in changes nothing at all and `sh_teamstats` says so. The shuffle plug-in's own
-`BlendAlienCommanderAndFieldSkills` setting is **ignored** while this plug-in is enabled; use
-`AlienCommanderSkillBlend` instead.
+### It forces commander skill on
+
+Every mode above is a function of the commander's commander skill, so this plug-in turns the shuffle
+plug-in's `UseCommanderSkill` on for as long as it is enabled, whatever your shuffle config says.
+`sh_teamstats` states this, and disabling the plug-in hands the setting straight back.
+
+**If you had `UseCommanderSkill` off deliberately, read this.** The usual reason to turn it off is
+that a commander who leaves the chair early is still rated at commander skill all round. Enabling
+this plug-in and leaving both settings at `COMMANDER_ONLY` gives you exactly that behaviour back.
+Set at least one team to `AVERAGE_IF_FIELD_SKILL_HIGHER` or `AVERAGE`, which is the reason this
+plug-in exists.
+
+These settings only apply when the shuffle plug-in's `BalanceMode` is `HIVE`; commander skill is not
+consulted in the other modes. The shuffle plug-in's own `BlendAlienCommanderAndFieldSkills` setting
+is **ignored** while this plug-in is enabled; use `AlienCommanderSkillBlend` instead.
 
 ## Reporting
 
@@ -75,18 +85,13 @@ this plug-in changes nothing at all and `sh_teamstats` says so. The shuffle plug
 
 ```
 Shuffle Mk II v1.12 is active and has replaced Shine's commander skill calculation.
+Commander skill is forced on by this plug-in, overriding the shuffle plug-in's UseCommanderSkill setting of false.
 Commander skill blending - Marines: AVERAGE_IF_FIELD_SKILL_HIGHER. Aliens: AVERAGE.
 Shuffle results may differ from other servers. Report shuffle issues to the Shuffle Mk II author, not to Shine.
 ```
 
-With the shuffle plug-in's `UseCommanderSkill` turned off there is nothing to blend, so it reports
-that instead rather than describing blending that is not happening:
-
-```
-Shuffle Mk II v1.12 is loaded, but the shuffle plug-in has UseCommanderSkill disabled.
-Commanders are rated on field skill alone, so the blending settings (Marines: AVERAGE. Aliens: AVERAGE_IF_FIELD_SKILL_HIGHER.) do nothing.
-Shuffle results match stock Shine while that is the case.
-```
+If `UseCommanderSkill` was already on, the second line says so instead of claiming to override
+anything.
 
 This is deliberate. Shine's built-in "another mod has altered the shuffle algorithm" warning only
 triggers when the top-level shuffling function is replaced, which this plug-in does not do — so
