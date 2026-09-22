@@ -148,24 +148,51 @@ end
 --[[
 	Reports which algorithm is actually in use, so server operators and players can tell that
 	shuffle results will not match a stock Shine server, and who to report problems to.
+
+	Every blending mode is a function of the commander skill, so when the shuffle plugin has
+	commander skill switched off there is nothing to blend and this plugin changes nothing. Say so,
+	rather than reporting blending that is not happening.
 ]]
 function Plugin:PrintAlgorithm( Client )
-	local Lines = {
-		StringFormat(
-			"%s v%s is active and has replaced Shine's commander skill calculation.",
-			self.PrintName,
-			self.Version
-		),
-		StringFormat(
-			"Commander skill blending - Marines: %s. Aliens: %s.",
-			self.Config.MarineCommanderSkillBlend,
-			self.Config.AlienCommanderSkillBlend
-		),
-		StringFormat(
-			"Shuffle results may differ from other servers. Report shuffle issues to the %s author, not to Shine.",
-			self.PrintName
-		)
-	}
+	local VoteShuffle = Shine.Plugins.voterandom
+	local CommanderSkillEnabled = true
+	if VoteShuffle and VoteShuffle.IsCommanderSkillEnabled then
+		CommanderSkillEnabled = not not VoteShuffle:IsCommanderSkillEnabled()
+	end
+
+	local Lines
+	if CommanderSkillEnabled then
+		Lines = {
+			StringFormat(
+				"%s v%s is active and has replaced Shine's commander skill calculation.",
+				self.PrintName,
+				self.Version
+			),
+			StringFormat(
+				"Commander skill blending - Marines: %s. Aliens: %s.",
+				self.Config.MarineCommanderSkillBlend,
+				self.Config.AlienCommanderSkillBlend
+			),
+			StringFormat(
+				"Shuffle results may differ from other servers. Report shuffle issues to the %s author, not to Shine.",
+				self.PrintName
+			)
+		}
+	else
+		Lines = {
+			StringFormat(
+				"%s v%s is loaded, but the shuffle plugin has UseCommanderSkill disabled.",
+				self.PrintName,
+				self.Version
+			),
+			StringFormat(
+				"Commanders are rated on field skill alone, so the blending settings (Marines: %s. Aliens: %s.) do nothing.",
+				self.Config.MarineCommanderSkillBlend,
+				self.Config.AlienCommanderSkillBlend
+			),
+			"Shuffle results match stock Shine while that is the case."
+		}
+	end
 
 	if not Client then
 		Notify( TableConcat( Lines, "\n" ) )

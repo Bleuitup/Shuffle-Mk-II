@@ -124,6 +124,15 @@ plugin. `Plugin:Cleanup` restores both, so the plugin can be unloaded cleanly.
 **If upstream changes how skill offsets are applied, these must be updated to match** or this
 plugin will silently disagree with Shine about what a player's field skill is.
 
+### Commander skill is the shuffle plugin's call, not this one's
+
+`CommanderSkillEnabled` is passed in by voterandom from `BalanceModeConfig.HIVE.UseCommanderSkill`,
+via `BalanceModule:ApplyConfigToRankingFunction`. This plugin has no setting of its own for it and
+must not grow one — it would then disagree with the shuffle plugin about which players get ranked
+how. With it off, `GetHiveSkill` never enters the commander branch and returns exactly what upstream
+would, so the plugin is inert. `PrintAlgorithm` checks the same flag and says so, because every
+blend mode is a function of the commander skill.
+
 ### The sh_teamstats output is deliberate
 
 Shine detects an altered shuffle by checking whether `ShufflingModes[ Mode ]` still originates from
@@ -143,8 +152,8 @@ assertions covering every case where it must stay out of the way, and the patter
 lines when it does act.
 
 `blend.lua` stubs the few Shine globals the plugin touches at load time, then `loadfile`s the real plugin file
-and calls `Plugin:GetHiveSkill` directly — so it tests the shipped code, not a copy. 12 assertions
-covering all three modes, per-team isolation, and the fall-through paths.
+and calls `Plugin:GetHiveSkill` directly — so it tests the shipped code, not a copy. 19 assertions
+covering all three modes, per-team isolation, the fall-through paths, and what `sh_teamstats` reports.
 
 The `AVERAGE` case asserts 450 against the same fixture Shine's own unit test uses, which confirms
 the legacy behaviour is preserved.

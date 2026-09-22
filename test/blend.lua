@@ -28,13 +28,17 @@ function table.AsEnum( Table, KeyTransformer )
 	return Ret
 end
 
-Shared = { Message = print }
+-- PrintAlgorithm captures Shared.Message as an upvalue when the plugin file loads, so the
+-- collector has to be in place before that.
+local NotifiedLines = {}
+Shared = { Message = function( Text ) NotifiedLines[ #NotifiedLines + 1 ] = Text end }
 
 local MockClient = { GetIsVirtual = function() return false end }
 
 Shine = {
 	Plugin = function() return { BaseClass = { Cleanup = function() end } } end,
 	GetClientForPlayer = function() return MockClient end,
+	Plugins = {},
 	Validator = function()
 		local V = {}
 		V.InEnum = function() return function() end end
@@ -136,6 +140,51 @@ Check( "commander skill disabled uses field skill",
 	500, Skill( AlienComm, 2, Blend.AVERAGE, Blend.AVERAGE, false ) )
 Check( "commander evaluated against the opposite team uses field skill",
 	1500, Skill( AlienComm, 1, Blend.AVERAGE, Blend.AVERAGE ) )
+
+-- sh_teamstats reporting ----------------------------------------------------
+-- Every blend mode is a function of the commander skill, so with the shuffle plugin's
+-- UseCommanderSkill off this plugin changes nothing, and must not claim otherwise.
+local function Report( CommanderSkillEnabled )
+	Shine.Plugins.voterandom = CommanderSkillEnabled ~= nil and {
+		IsCommanderSkillEnabled = function() return CommanderSkillEnabled end
+	} or nil
+
+	Plugin.Config = {
+		MarineCommanderSkillBlend = Blend.AVERAGE,
+		AlienCommanderSkillBlend = Blend.AVERAGE_IF_FIELD_SKILL_HIGHER
+	}
+
+	NotifiedLines = {}
+	Plugin:PrintAlgorithm()
+	return NotifiedLines[ 1 ] or ""
+end
+
+local function Says( Text, Phrase )
+	return Text:find( Phrase, 1, true ) ~= nil
+end
+
+print( "" )
+print( "sh_teamstats reporting:" )
+
+local Enabled = Report( true )
+Check( "commander skill on: says it replaced the calculation", true,
+	Says( Enabled, "has replaced Shine's commander skill calculation" ) )
+Check( "commander skill on: names both blend modes", true,
+	Says( Enabled, "Marines: AVERAGE." ) and Says( Enabled, "Aliens: AVERAGE_IF_FIELD_SKILL_HIGHER." ) )
+Check( "commander skill on: warns results may differ", true,
+	Says( Enabled, "may differ from other servers" ) )
+
+local Disabled = Report( false )
+Check( "commander skill off: does not claim to have replaced anything", false,
+	Says( Disabled, "has replaced" ) )
+Check( "commander skill off: says why the settings do nothing", true,
+	Says( Disabled, "UseCommanderSkill disabled" ) and Says( Disabled, "do nothing" ) )
+Check( "commander skill off: says results match stock Shine", true,
+	Says( Disabled, "match stock Shine" ) )
+
+-- If the shuffle plugin cannot be inspected, report blending rather than claim stock behaviour.
+Check( "shuffle plugin missing: falls back to the full report", true,
+	Says( Report( nil ), "has replaced Shine's commander skill calculation" ) )
 
 print( string.format( "\n%d passed, %d failed\n", Passed, Failed ) )
 os.exit( Failed == 0 and 0 or 1 )
