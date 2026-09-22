@@ -222,7 +222,9 @@ function Plugin:LogShuffle()
 
 				if Breakdown then
 					local Client = GetClientForPlayer( Ply )
-					local Name = ( Client and Shine.GetClientInfo( Client ) )
+					-- Name only, never Shine.GetClientInfo: that appends the Steam ID, and these lines
+					-- are collected for analysis and shared. NS2 names are not account names.
+					local Name = ( Client and Shine.GetClientName( Client ) )
 						or ( Ply.GetName and Ply:GetName() ) or "<unknown>"
 
 					Logger:Info( "Shuffled teams - %s commander %s counted as %.0f (commander skill %.0f, field skill %s, blend %s).",

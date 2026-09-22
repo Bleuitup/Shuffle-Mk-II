@@ -109,9 +109,9 @@ team that had a commander. Four lines at most.
 
 ```
 [Shuffle Mk II] Shuffled teams - Marines: average skill 2325 across 2 players (2 counted).
-[Shuffle Mk II] Shuffled teams - Marines commander Someone<123> counted as 2650 (commander skill 1600, field skill 3700, blend AVERAGE_IF_FIELD_SKILL_HIGHER).
+[Shuffle Mk II] Shuffled teams - Marines commander Someone counted as 2650 (commander skill 1600, field skill 3700, blend AVERAGE_IF_FIELD_SKILL_HIGHER).
 [Shuffle Mk II] Shuffled teams - Aliens: average skill 1838 across 2 players (2 counted).
-[Shuffle Mk II] Shuffled teams - Aliens commander Godi<456> counted as 2176 (commander skill 497, field skill 3855, blend AVERAGE_IF_FIELD_SKILL_HIGHER).
+[Shuffle Mk II] Shuffled teams - Aliens commander Godi counted as 2176 (commander skill 497, field skill 3855, blend AVERAGE_IF_FIELD_SKILL_HIGHER).
 ```
 
 This exists because the blended values are not visible anywhere else. The scoreboard shows no
@@ -122,6 +122,9 @@ ranking function the shuffle used, so they are what the algorithm actually decid
 Only Hive shuffles are logged, since commander skill is not consulted in the other balance modes.
 A team with no commander gets one line rather than two — commonly the case, since blending applies
 only to a player sitting in the chair at the moment the shuffle runs.
+
+Player names are logged without Steam IDs, so the log can be shared for analysis without
+exposing accounts.
 
 Set the level to quieten it:
 

@@ -32,7 +32,7 @@ local MockClient = { GetIsVirtual = function() return false end }
 Shine = {
 	Plugin = function() return { BaseClass = { Cleanup = function() end } } end,
 	GetClientForPlayer = function() return MockClient end,
-	GetClientInfo = function() return "Bleuitup<123>" end,
+	GetClientName = function() return "Bleuitup" end,
 	GetTeamName = function( self, TeamNumber ) return TeamNumber == 1 and "Marines" or "Aliens" end,
 	LoadPluginModule = function() end,
 	Plugins = {},

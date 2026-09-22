@@ -164,6 +164,9 @@ Skill values come from `VoteShuffle:ApplyConfigToRankingFunction( VoteShuffle.Sk
 and `VoteShuffle:GetAverageSkill`, both public methods, so the log reports exactly what the shuffle
 used. `GetAverageSkill` is uncached, unlike `GetTeamStats`, so the numbers cannot be stale.
 
+**Log names with `Shine.GetClientName`, never `Shine.GetClientInfo`** — the latter appends the
+Steam ID, and these lines are collected and shared for analysis. NS2 names are not account names.
+
 `Shine.LoadPluginModule( "logger.lua", Plugin )` at the end of `server.lua` supplies `self.Logger`,
 the `LogLevel` config setting and `sh_setloglevel`. Adding it changed the config schema, so Shine
 rewrites `ShuffleMkII.json` once on upgrade, discarding operator comments — noted in the README.
