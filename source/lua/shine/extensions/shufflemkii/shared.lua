@@ -9,7 +9,7 @@
 
 local Plugin = Shine.Plugin( ... )
 
-Plugin.Version = "1.12"
+Plugin.Version = "1.13"
 Plugin.PrintName = "Shuffle Mk II"
 
 -- Disabled until a server operator enables it. Without a default state, Shine never records the

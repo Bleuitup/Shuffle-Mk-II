@@ -84,7 +84,7 @@ is **ignored** while this plug-in is enabled; use `AlienCommanderSkillBlend` ins
 `sh_teamstats` reports the algorithm in use whenever this plug-in is active:
 
 ```
-Shuffle Mk II v1.12 is active and has replaced Shine's commander skill calculation.
+Shuffle Mk II v1.13 is active and has replaced Shine's commander skill calculation.
 Commander skill is forced on by this plug-in, overriding the shuffle plug-in's UseCommanderSkill setting of false.
 Commander skill blending - Marines: AVERAGE_IF_FIELD_SKILL_HIGHER. Aliens: AVERAGE.
 Shuffle results may differ from other servers. Report shuffle issues to the Shuffle Mk II author, not to Shine.
@@ -102,6 +102,39 @@ where to send problem reports.
 **Please do not remove or suppress that output.** If you are running this mod, shuffle results on
 your server are not stock Shine's, and problems with them are not Person8880's to answer for.
 
+## Shuffle log
+
+Every Hive shuffle writes what it decided to the server log: one line per team, and one more per
+team that had a commander. Four lines at most.
+
+```
+[Shuffle Mk II] Shuffled teams - Marines: average skill 2325 across 2 players (2 counted).
+[Shuffle Mk II] Shuffled teams - Marines commander Someone<123> counted as 2650 (commander skill 1600, field skill 3700, blend AVERAGE_IF_FIELD_SKILL_HIGHER).
+[Shuffle Mk II] Shuffled teams - Aliens: average skill 1838 across 2 players (2 counted).
+[Shuffle Mk II] Shuffled teams - Aliens commander Godi<456> counted as 2176 (commander skill 497, field skill 3855, blend AVERAGE_IF_FIELD_SKILL_HIGHER).
+```
+
+This exists because the blended values are not visible anywhere else. The scoreboard shows no
+per-player figures, and `sh_teamstats` serves cached numbers that nothing refreshes when a player
+takes or leaves the command chair. These are computed at the moment of the shuffle, from the same
+ranking function the shuffle used, so they are what the algorithm actually decided on.
+
+Only Hive shuffles are logged, since commander skill is not consulted in the other balance modes.
+A team with no commander gets one line rather than two — commonly the case, since blending applies
+only to a player sitting in the chair at the moment the shuffle runs.
+
+Set the level to quieten it:
+
+```
+sh_setloglevel shufflemkii WARN
+```
+
+or `LogLevel` in `ShuffleMkII.json`. The default, `INFO`, logs.
+
+**Adding this setting means Shine rewrites `ShuffleMkII.json` once** to insert `LogLevel`, which
+discards any comments you had added to that file. Only happens on the upgrade.
+
+
 ## Development
 
 The plug-in lives in `source/lua/shine/extensions/shufflemkii/`: `shared.lua` declares it and
@@ -112,6 +145,7 @@ Logic tests run against the real plug-in file with a standalone Lua interpreter:
 
 ```
 lua test/blend.lua
+lua test/shuffle_log.lua
 ```
 
 See `CLAUDE.md` for how the plug-in hooks into Shine and what must be kept in sync with upstream.

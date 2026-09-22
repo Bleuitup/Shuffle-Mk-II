@@ -28,6 +28,7 @@ source/lua/entry/ShuffleMkII.entry                  registers the file hook belo
 source/lua/ShuffleMkII/FileHooks.lua                queues the consistency fallback (server only)
 source/lua/ShuffleMkII/ConsistencyFallback.lua      runs after the game's consistency setup
 test/blend.lua                                      standalone logic tests, not shipped
+test/shuffle_log.lua                                standalone tests for the shuffle log, not shipped
 test/consistency_fallback.lua                       standalone tests for the fallback, not shipped
 output/                                             Launch Pad build output, gitignored
 ```
@@ -143,6 +144,30 @@ with both blends left at the `COMMANDER_ONLY` default gives an operator who deli
 commander skill the exact behaviour they disabled it to avoid. The README warns about this; do not
 quietly change the defaults to paper over it without asking the author.
 
+### The shuffle log wraps ShuffleTeams
+
+`OnFirstThink` wraps `VoteShuffle.ShuffleTeams` and calls `Plugin:LogShuffle` after the original
+returns; `Cleanup` restores it. The wrapper checks `ShufflePlugin.LastShuffleMode`, which the call
+it just made has set and which accounts for a forced mode, rather than reading `Config.BalanceMode`.
+
+`TeamMembers` is a local inside `ShuffleTeams` and is not returned, so the log reads the teams back
+from `Gamerules` instead. That reports where players actually ended up rather than where the
+algorithm intended to put them, which is the more useful thing when a shuffle looks wrong. **It
+assumes every shuffle mode has finished moving players before `ShuffleTeams` returns** — true of the
+current modes; if a future mode defers its moves, the log would show the pre-shuffle teams.
+
+`Team:GetPlayers()` hands back the same table on every call (upstream notes this in `GetTeamStats`),
+so `LogShuffle` finishes with one team before asking for the next. Do not restructure it to fetch
+both up front.
+
+Skill values come from `VoteShuffle:ApplyConfigToRankingFunction( VoteShuffle.SkillGetters.GetHiveSkill )`
+and `VoteShuffle:GetAverageSkill`, both public methods, so the log reports exactly what the shuffle
+used. `GetAverageSkill` is uncached, unlike `GetTeamStats`, so the numbers cannot be stale.
+
+`Shine.LoadPluginModule( "logger.lua", Plugin )` at the end of `server.lua` supplies `self.Logger`,
+the `LogLevel` config setting and `sh_setloglevel`. Adding it changed the config schema, so Shine
+rewrites `ShuffleMkII.json` once on upgrade, discarding operator comments — noted in the README.
+
 ### The sh_teamstats output is deliberate
 
 Shine detects an altered shuffle by checking whether `ShufflingModes[ Mode ]` still originates from
@@ -155,7 +180,12 @@ differently. Shine's source asks mods not to suppress that warning. Do not remov
 ```
 lua test/blend.lua
 lua test/consistency_fallback.lua
+lua test/shuffle_log.lua
 ```
+
+`shuffle_log.lua` drives `LogShuffle` and the `ShuffleTeams` wrapper against stubbed teams: 23
+assertions covering the line count, the blended numbers, skill offsets, both commanders, the
+wrapper restoring cleanly, and the log level.
 
 `consistency_fallback.lua` loads the real `ConsistencyFallback.lua` against a stubbed `Server`: 12
 assertions covering every case where it must stay out of the way, and the patterns, order and log

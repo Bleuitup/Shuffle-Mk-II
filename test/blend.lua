@@ -38,6 +38,7 @@ local MockClient = { GetIsVirtual = function() return false end }
 Shine = {
 	Plugin = function() return { BaseClass = { Cleanup = function() end } } end,
 	GetClientForPlayer = function() return MockClient end,
+	LoadPluginModule = function() end,
 	Plugins = {},
 	Validator = function()
 		local V = {}

@@ -146,6 +146,98 @@ function Plugin:GetHiveSkill( Ply, TeamNumber, TeamSkillEnabled, CommanderSkillE
 end
 
 --[[
+	Breaks down how a commander's skill value was arrived at, for the shuffle log below.
+
+	Returns nil for anyone who is not a commander of the team being evaluated, which is also how
+	GetHiveSkill decides whether to blend at all, so the two agree by construction.
+]]
+function Plugin:GetCommanderSkillBreakdown( Ply, TeamNumber, TeamSkillEnabled )
+	if not ( Ply.GetCommanderSkill and Ply.isa and Ply:isa( "Commander" ) and Ply:GetTeamNumber() == TeamNumber ) then
+		return nil
+	end
+
+	local CommanderSkill = Ply:GetCommanderSkill() or -1
+	if CommanderSkill < 0 then return nil end
+
+	local BlendType = self.Config[ CommanderSkillBlendFields[ TeamNumber ] ]
+	local Breakdown = {
+		CommanderSkill = GetPlayerTeamSkill(
+			TeamSkillEnabled and TeamNumber or 0,
+			CommanderSkill,
+			Ply:GetCommanderSkillOffset() or 0
+		),
+		FieldSkill = GetFieldPlayerSkill( Ply, TeamNumber, TeamSkillEnabled ),
+		BlendType = BlendType
+	}
+
+	local Blender = CommanderSkillBlenders[ BlendType ]
+	if Blender and Breakdown.FieldSkill then
+		Breakdown.Counted = Blender( Breakdown.CommanderSkill, Breakdown.FieldSkill )
+	else
+		Breakdown.Counted = Breakdown.CommanderSkill
+	end
+
+	return Breakdown
+end
+
+--[[
+	Logs what each shuffle produced: one line per team, plus one per commander where there is one.
+
+	Neither the scoreboard nor sh_teamstats can show this. The scoreboard has no per-player values,
+	and sh_teamstats serves cached numbers that nothing refreshes when a player takes or leaves the
+	command chair. This is computed fresh at the moment of the shuffle, from the same ranking
+	function the shuffle itself used, so it is what the algorithm actually decided on.
+
+	Logged at INFO, so sh_setloglevel shufflemkii WARN silences it.
+]]
+function Plugin:LogShuffle()
+	local Logger = self.Logger
+	if not Logger or not Logger:IsInfoEnabled() then return end
+
+	local VoteShuffle = Shine.Plugins.voterandom
+	if not VoteShuffle then return end
+
+	local Gamerules = GetGamerules()
+	if not Gamerules then return end
+
+	local RankFunc = VoteShuffle:ApplyConfigToRankingFunction( VoteShuffle.SkillGetters.GetHiveSkill )
+	local TeamSkillEnabled = VoteShuffle:IsPerTeamSkillEnabled()
+
+	-- Team:GetPlayers() hands back the same table every call, so finish with one team before
+	-- asking for the next.
+	for TeamNumber = 1, 2 do
+		local Team = TeamNumber == 1 and Gamerules.team1 or Gamerules.team2
+		local Players = Team and Team.GetPlayers and Team:GetPlayers()
+
+		if Players then
+			local Stats = VoteShuffle:GetAverageSkill( Players, TeamNumber, RankFunc )
+			local TeamName = Shine:GetTeamName( TeamNumber, true )
+
+			Logger:Info( "Shuffled teams - %s: average skill %.0f across %d player%s (%d counted).",
+				TeamName, Stats.Average, #Players, #Players == 1 and "" or "s", Stats.Count )
+
+			for i = 1, #Players do
+				local Ply = Players[ i ]
+				local Breakdown = Ply and self:GetCommanderSkillBreakdown( Ply, TeamNumber, TeamSkillEnabled )
+
+				if Breakdown then
+					local Client = GetClientForPlayer( Ply )
+					local Name = ( Client and Shine.GetClientInfo( Client ) )
+						or ( Ply.GetName and Ply:GetName() ) or "<unknown>"
+
+					Logger:Info( "Shuffled teams - %s commander %s counted as %.0f (commander skill %.0f, field skill %s, blend %s).",
+						TeamName, Name, Breakdown.Counted, Breakdown.CommanderSkill,
+						Breakdown.FieldSkill and StringFormat( "%.0f", Breakdown.FieldSkill ) or "unavailable",
+						Breakdown.BlendType )
+
+					break
+				end
+			end
+		end
+	end
+end
+
+--[[
 	Reports which algorithm is actually in use, so server operators and players can tell that
 	shuffle results will not match a stock Shine server, and who to report problems to.
 
@@ -218,6 +310,20 @@ function Plugin:OnFirstThink()
 		VoteShuffle.IsCommanderSkillEnabled = function() return true end
 	end
 
+	-- Log the result of each Hive shuffle. Nothing else shows the values it used: the scoreboard
+	-- has no per-player figures and sh_teamstats serves cached ones.
+	self.OriginalShuffleTeams = VoteShuffle.ShuffleTeams
+	VoteShuffle.ShuffleTeams = function( ShufflePlugin, ... )
+		local Result = self.OriginalShuffleTeams( ShufflePlugin, ... )
+
+		-- LastShuffleMode is set by the call above, and accounts for a forced mode.
+		if ShufflePlugin.LastShuffleMode == ShufflePlugin.ShuffleMode.HIVE then
+			self:LogShuffle()
+		end
+
+		return Result
+	end
+
 	local Command = Shine.Commands[ "sh_teamstats" ]
 	if not Command then return end
 
@@ -244,6 +350,10 @@ function Plugin:Cleanup()
 	if VoteShuffle and self.OriginalIsCommanderSkillEnabled then
 		VoteShuffle.IsCommanderSkillEnabled = self.OriginalIsCommanderSkillEnabled
 	end
+	if VoteShuffle and self.OriginalShuffleTeams then
+		VoteShuffle.ShuffleTeams = self.OriginalShuffleTeams
+	end
+	self.OriginalShuffleTeams = nil
 	self.OriginalIsCommanderSkillEnabled = nil
 	self.OriginalGetHiveSkill = nil
 
@@ -255,3 +365,6 @@ function Plugin:Cleanup()
 
 	self.BaseClass.Cleanup( self )
 end
+
+-- Provides self.Logger, a LogLevel config setting and sh_setloglevel shufflemkii.
+Shine.LoadPluginModule( "logger.lua", Plugin )
