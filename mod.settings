@@ -1,8 +1,58 @@
 name        = "Shine - Shuffle Mk II"
 source_dir  = "source"
 output_dir  = "output"
-description = [=[]=]
+description = [=[[b]Not whitelisted yet: a server running this mod is unranked.[/b]
+
+mod id 3798409220
+
+[b]Choose how each team's commander is rated when Shine's voterandom plugin shuffles teams.[/b]
+
+Voterandom rates a commander at their commander skill or, with commander skill turned off, at their field skill. It can blend the two 50/50, but only for aliens. Shuffle Mk II gives marines and aliens a setting each, and adds a new option that blends only when the commander is the stronger field player.
+
+[h1]Why[/h1]
+[list]
+[*] On 6v6 to 8v8 servers the marine commander often leaves the chair to play in the field, at least until lerks. It's considered the meta, and it's seen in most competitive 6v6 games, scrims, tournament matches and high-level 8v8 play.
+[*] Voterandom still rates them at commander skill for the whole round. When their field skill is much higher, their team is stronger than the shuffle thinks and wins more often than expected.
+[*] Hive credits a player partly as a commander and partly as a field player, by how long they actually spent in the chair. So most of those wins go to their field skill, their commander skill stays low, and the next shuffle rates them low again. It's a natural result of being good on the field, not abuse.
+[*] Turning commander skill off rates every commander at field skill instead, which over-punishes good fielders for commanding. For example, a very strong alien player can rarely be as effective after taking the hive as they are as a pure fielder, because of the -15 personal resources penalty. Even if they barely command at all, getting their carry lifeform in time is severely hampered.
+[/list]
+
+Skill payouts are computed and handed out on UWE's side, by Hive, and no server mod can change them. Shuffle Mk II is a partial solution on the shuffling side only: it rates commanders more realistically when teams are made. It isn't an end-all solution to how commander and field skill are tracked.
+
+[h1]Settings[/h1]
+Marines and aliens are set separately, with [b]MarineCommanderSkillBlend[/b] and [b]AlienCommanderSkillBlend[/b] in [i]config://shine/plugins/ShuffleMkII.json[/i]:
+[list]
+[*] [b]COMMANDER_ONLY[/b] (default): commander skill as-is, exactly like voterandom with commander skill on and blending off.
+[*] [b]AVERAGE_IF_FIELD_SKILL_HIGHER[/b] (recommended): the average of commander and field skill when field skill is higher, otherwise commander skill. Great fielders who are average commanders are the ones likely to leave the chair, though they won't be as effective as a normal field player: medding suffers on marines, and on aliens the pres penalty above delays their lifeform. Good commanders who are weaker fielders tend to stay in the chair, so they keep their commander skill.
+[*] [b]AVERAGE[/b]: always the average, like voterandom's alien blending, now available for marines too.
+[/list]
+Mix and match per team: for example, AVERAGE_IF_FIELD_SKILL_HIGHER on both, or keep aliens on the familiar AVERAGE and give marines their own blend. Left on the defaults, commanders are rated exactly as stock voterandom does.
+
+[b]Commander skill is always on while the mod is enabled[/b], whatever your voterandom config says, because every setting depends on it. Disable the mod and your own setting comes straight back. Voterandom's alien-only blending option is ignored while the mod is enabled; use AlienCommanderSkillBlend instead.
+
+Only Hive-skill shuffles are affected.
+
+[h1]Nothing hidden[/h1]
+[list]
+[*] [b]sh_teamstats[/b] says Shuffle Mk II is active, which setting each team uses, and whether it's overriding your commander skill setting. Players know shuffle complaints belong here, not with Shine.
+[*] After each shuffle, the console shows each team's average and how each commander was counted. A per-player breakdown goes to Shine's log file. Names only, no Steam IDs.
+[/list]
+
+[h1]Invalid data fix[/h1]
+A game bug makes any unranked server stop checking players' files, so players running some client-side mods (Devnull - Enhanced Hud, for example) get kicked with "Invalid data". It affects every non-whitelisted mod, this one included. While the server is unranked, Shuffle Mk II restores the game's standard file checking. It leaves your own consistency settings alone and does nothing on a ranked server. The bug has been reported to UWE.
+
+[h1]Requirements[/h1]
+[list]
+[*] Requires [b]Shine[/b], with the voterandom plugin enabled.
+[*] Off by default. Enable it with [i]sh_loadplugin shufflemkii true[/i] (the "true" saves it).
+[*] Must be run on the server.
+[/list]
+
+[h1]Credits[/h1]
+The commander skill calculation is adapted from Shine by Person8880, whose voterandom plugin does all the actual team balancing. This mod only changes one number it feeds on.
+
+Source: https://github.com/Bleuitup/Shuffle-Mk-II]=]
 image       = "preview.jpg"
-tag_modtype = ""
-tag_support = ""
+tag_modtype = "Gameplay Tweak"
+tag_support = "Must be run on Server"
 publish_id = 3798409220
