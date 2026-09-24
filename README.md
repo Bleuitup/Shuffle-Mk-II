@@ -115,7 +115,7 @@ One line per team, and one more per team that had a commander. Four lines at mos
 [Shuffle Mk II] Shuffled teams - Marines: average skill 2325 across 2 players (2 counted).
 [Shuffle Mk II] Shuffled teams - Marines commander Someone counted as 2650 (commander skill 1600, field skill 3700, blend AVERAGE_IF_FIELD_SKILL_HIGHER).
 [Shuffle Mk II] Shuffled teams - Aliens: average skill 1838 across 2 players (2 counted).
-[Shuffle Mk II] Shuffled teams - Aliens commander Godi counted as 2176 (commander skill 497, field skill 3855, blend AVERAGE_IF_FIELD_SKILL_HIGHER).
+[Shuffle Mk II] Shuffled teams - Aliens commander AnotherComm counted as 2176 (commander skill 497, field skill 3855, blend AVERAGE_IF_FIELD_SKILL_HIGHER).
 ```
 
 ### The full breakdown
@@ -128,7 +128,7 @@ later analysis and carry the same `[Shuffle Mk II]` prefix, so `grep` separates 
 [Shuffle Mk II] Shuffle detail - modes: Marines AVERAGE_IF_FIELD_SKILL_HIGHER, Aliens AVERAGE_IF_FIELD_SKILL_HIGHER. Per-team skill: disabled.
 [Shuffle Mk II] Shuffle detail - Marines | Someone | counted 2650 | field 3700 | commander 1600 | blend AVERAGE_IF_FIELD_SKILL_HIGHER
 [Shuffle Mk II] Shuffle detail - Marines | SomeoneElse | counted 2000 | field 2000 | commander - | blend -
-[Shuffle Mk II] Shuffle detail - Aliens | Godi | counted 2176 | field 3855 | commander 497 | blend AVERAGE_IF_FIELD_SKILL_HIGHER
+[Shuffle Mk II] Shuffle detail - Aliens | AnotherComm | counted 2176 | field 3855 | commander 497 | blend AVERAGE_IF_FIELD_SKILL_HIGHER
 [Shuffle Mk II] Shuffle detail - Aliens | Another | counted 1500 | field 1500 | commander - | blend -
 ```
 
